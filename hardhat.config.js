@@ -8,7 +8,7 @@ module.exports = {
   networks: {
     mumbai: {
       chainId: 80001,
-      url: "https://polygon-mumbai.g.alchemy.com/v2/3ohLMSxKL3LyiT3ppE7-raO4PAOgbX-b",
+      url: [process.env.RPC_URL],
       accounts: [process.env.PRIVATE_KEY],
     },
   },
