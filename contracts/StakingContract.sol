@@ -15,7 +15,7 @@ contract StakingContract {
     using IDAv1Library for IDAv1Library.InitData;
     IDAv1Library.InitData public idaV1;
 
-    uint32 public constant INDEX_ID = 0;
+    uint32 public INDEX_ID = 0;
     address acceptedToken = 0x5D8B4C2554aeB7e86F387B4d6c00Ac33499Ed01f; // fdaix token
     uint contractAmount = 1000000;
     address owner;
@@ -23,7 +23,52 @@ contract StakingContract {
     // uint endTime;
     mapping(address => uint) totalStaked;
 
+    // Publisher
+    struct Publisher {
+        uint id;
+        uint32 index_id;
+        uint amount;
+        uint no_day;
+        uint perday_value;
+        uint startTime;
+        address publisher;
+        address token;
+        bool hasDistrubted;
+    }
+    uint publisherId;
+    // uint[] publishers;
+    mapping(uint => Publisher) public idToPublisher;
+    mapping(address => uint[]) public userIndexId;
+    mapping(address => mapping(uint => bool)) public hasClaimed;
+
     constructor(ISuperToken _spreaderToken, ISuperfluid _host) {
+        // IDA Library Initialize.
+        // idaV1 = IDAv1Library.InitData(
+        //     _host,
+        //     IInstantDistributionAgreementV1(
+        //         address(
+        //             _host.getAgreementClass(
+        //                 keccak256(
+        //                     "org.superfluid-finance.agreements.InstantDistributionAgreement.v1"
+        //                 )
+        //             )
+        //         )
+        //     )
+        // );
+        // idaV1.createIndex(spreaderToken, INDEX_ID);
+        owner = msg.sender;
+        spreaderToken = _spreaderToken;
+        lastUpdateTime = block.timestamp;
+    }
+
+    function publishTokens(
+        ISuperfluid _host,
+        address _tokenAddress,
+        uint _amount,
+        uint _days
+    ) public {
+        INDEX_ID = INDEX_ID + 1;
+        publisherId = publisherId + 1;
         // IDA Library Initialize.
         idaV1 = IDAv1Library.InitData(
             _host,
@@ -38,12 +83,20 @@ contract StakingContract {
             )
         );
         idaV1.createIndex(spreaderToken, INDEX_ID);
-        owner = msg.sender;
-        spreaderToken = _spreaderToken;
-        lastUpdateTime = block.timestamp;
+        idToPublisher[publisherId] = Publisher(
+            publisherId,
+            INDEX_ID,
+            _amount,
+            _days,
+            _amount / _days,
+            block.timestamp,
+            msg.sender,
+            _tokenAddress,
+            false
+        );
     }
 
-    function stakeTokens(uint _amount) public payable {
+    function stakeTokens(uint _amount, uint _publishId) public payable {
         require(_amount > 0, "Amount must be greater than zero");
         // require(
         //     block.timestamp > idToPool[INDEX_ID].startTime &&
@@ -51,12 +104,14 @@ contract StakingContract {
         //     "Wait for the next time period to start"
         // );
         require(msg.value == (_amount * 10 ** 18), "Not enough value!");
+
         idaV1.updateSubscriptionUnits(
             spreaderToken,
-            INDEX_ID,
+            idToPublisher[_publishId].index_id,
             msg.sender,
             uint128(_amount)
         );
+        userIndexId[msg.sender].push(idToPublisher[_publishId].index_id);
     }
 
     /// @notice Takes the entire balance of the designated spreaderToken in the contract and distributes it out to unit holders w/ IDA
