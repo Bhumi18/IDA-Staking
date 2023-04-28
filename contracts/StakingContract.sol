@@ -41,7 +41,7 @@ contract StakingContract {
     mapping(address => uint[]) public userIndexId;
     mapping(address => mapping(uint => bool)) public hasClaimed;
 
-    constructor(ISuperToken _spreaderToken, ISuperfluid _host) {
+    constructor(ISuperToken _spreaderToken) {
         // IDA Library Initialize.
         // idaV1 = IDAv1Library.InitData(
         //     _host,
@@ -66,7 +66,13 @@ contract StakingContract {
         address _tokenAddress,
         uint _amount,
         uint _days
-    ) public {
+    ) public payable {
+        require(
+            _tokenAddress == acceptedToken,
+            "we are not accepting this token"
+        );
+        require(_amount > 0, "Amount must be greater than zero");
+        spreaderToken.transferFrom(msg.sender, address(this), _amount);
         INDEX_ID = INDEX_ID + 1;
         publisherId = publisherId + 1;
         // IDA Library Initialize.
@@ -96,15 +102,23 @@ contract StakingContract {
         );
     }
 
-    function stakeTokens(uint _amount, uint _publishId) public payable {
+    function stakeTokens(
+        uint _amount,
+        uint _publishId,
+        address _tokenAddress
+    ) public payable {
+        require(
+            _tokenAddress == acceptedToken,
+            "we are not accepting this token"
+        );
         require(_amount > 0, "Amount must be greater than zero");
         // require(
         //     block.timestamp > idToPool[INDEX_ID].startTime &&
         //         block.timestamp < (idToPool[INDEX_ID].startTime + 7200),
         //     "Wait for the next time period to start"
         // );
-        require(msg.value == (_amount * 10 ** 18), "Not enough value!");
-
+        // require(msg.value == (_amount * 10 ** 18), "Not enough value!");
+        spreaderToken.transferFrom(msg.sender, address(this), _amount);
         idaV1.updateSubscriptionUnits(
             spreaderToken,
             idToPublisher[_publishId].index_id,
@@ -126,5 +140,19 @@ contract StakingContract {
             spreaderTokenBalance
         );
         idaV1.distribute(spreaderToken, INDEX_ID, actualDistributionAmount);
+    }
+
+    function getPublisherId() public view returns (uint) {
+        return publisherId;
+    }
+
+    function publisherDetails(uint _id) public view returns (Publisher memory) {
+        return idToPublisher[_id];
+    }
+
+    function afterDistribution(uint _id) public {
+        idToPublisher[_id].startTime = block.timestamp;
+        idToPublisher[_id].no_day = idToPublisher[_id].no_day - 1;
+        idToPublisher[_id].hasDistrubted = true;
     }
 }
