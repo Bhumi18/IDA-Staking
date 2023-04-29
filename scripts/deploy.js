@@ -4,9 +4,7 @@ async function main() {
   const StakingContract = await hre.ethers.getContractFactory(
     "StakingContract"
   );
-  const stakingContract = StakingContract.deploy(
-    "0x5D8B4C2554aeB7e86F387B4d6c00Ac33499Ed01f"
-  );
+  const stakingContract = StakingContract.deploy();
   await (await stakingContract).deployed();
   const address = (await stakingContract).address;
   console.log(
