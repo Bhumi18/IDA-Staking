@@ -32,6 +32,8 @@ contract StakingContract {
         address publisher;
         ISuperToken token;
         bool hasDistrubted;
+        string tokenName;
+        string tokenSymbol;
     }
     uint publisherId;
     // uint[] publishers;
@@ -49,7 +51,10 @@ contract StakingContract {
         ISuperfluid _host,
         ISuperToken _spreaderToken,
         uint _amount,
-        uint _days
+        uint _start,
+        uint _days,
+        string memory _name,
+        string memory _symbol
     ) public payable {
         require(_amount > 0, "Amount must be greater than zero");
         ISuperToken spreaderToken;
@@ -77,18 +82,21 @@ contract StakingContract {
             _amount,
             _days,
             _amount / _days,
-            block.timestamp,
+            _start,
             msg.sender,
             _spreaderToken,
-            false
+            false,
+            _name,
+            _symbol
         );
     }
 
     function stakeTokens(uint _amount, uint _publishId) public payable {
         require(_amount > 0, "Amount must be greater than zero");
         require(
-            idToPublisher[_publishId].startTime + 82800 > (block.timestamp),
-            "Time is out!"
+            (block.timestamp) > idToPublisher[_publishId].startTime &&
+                idToPublisher[_publishId].startTime + 82800 > (block.timestamp),
+            "Either time is not started or maybe it is completed!"
         );
         require(msg.value == _amount, "Not enough value!");
         userCampaignStakedamount[msg.sender][_publishId] += _amount;
@@ -158,5 +166,9 @@ contract StakingContract {
 
     function getAllPublisherData() public view returns (Publisher[] memory) {
         Publisher[] memory data = new Publisher[](publisherId);
+        for (uint i = 0; i < publisherId; i++) {
+            data[i] = idToPublisher[i + 1];
+        }
+        return data;
     }
 }
